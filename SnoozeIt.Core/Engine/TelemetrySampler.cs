@@ -31,6 +31,13 @@ public sealed class TelemetrySampler
         var activeAudioPids = AudioDetector.GetActiveAudioProcessIds();
         var now = DateTime.UtcNow;
 
+        IntPtr fgHwnd = NativeMethods.GetForegroundWindow();
+        uint fgPid = 0;
+        if (fgHwnd != IntPtr.Zero)
+        {
+            NativeMethods.GetWindowThreadProcessId(fgHwnd, out fgPid);
+        }
+
         Process[] runningProcesses;
         try
         {
@@ -104,7 +111,7 @@ public sealed class TelemetrySampler
                     CpuPercent = cpuPercent,
                     SessionId = sessionId,
                     IsPlayingAudio = isPlayingAudio,
-                    LastForegroundUtc = now // Default to now; updated by WindowFocusWatcher
+                    LastForegroundUtc = (pid == (int)fgPid) ? now : now.AddMinutes(-10)
                 };
 
                 var recommendation = HeuristicEngine.Evaluate(info);

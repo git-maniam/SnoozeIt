@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 using SnoozeIt.Client.Services;
 using SnoozeIt.Core.Engine;
 using SnoozeIt.Core.Models;
+using SnoozeIt.Core.Native;
 
 public partial class MainViewModel : ObservableObject
 {
@@ -80,6 +81,13 @@ public partial class MainViewModel : ObservableObject
 
         Groups.Clear();
 
+        IntPtr fgHwnd = NativeMethods.GetForegroundWindow();
+        uint fgPid = 0;
+        if (fgHwnd != IntPtr.Zero)
+        {
+            NativeMethods.GetWindowThreadProcessId(fgHwnd, out fgPid);
+        }
+
         var snoozedItems = new List<ProcessItemViewModel>();
         var activeGroupDict = new Dictionary<string, ProcessGroupViewModel>(StringComparer.OrdinalIgnoreCase);
 
@@ -87,7 +95,9 @@ public partial class MainViewModel : ObservableObject
         {
             var proc = sample.Process;
             var rec = sample.Recommendation;
-            bool isSafe = !rec.IsCritical && rec.FocusPenalty == 0;
+            bool isCritical = !SafetyFilter.IsSafeToSuspend(proc.ProcessId, proc.ProcessName, out _);
+            bool isForeground = (proc.ProcessId == (int)fgPid);
+            bool isSafe = !isCritical && !isForeground;
 
             var itemVm = new ProcessItemViewModel
             {
