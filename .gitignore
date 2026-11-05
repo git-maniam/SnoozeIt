@@ -13,6 +13,7 @@
 [Rr]elease/
 [Rr]eleases/
 publish/
+installer/
 *.msi
 *.wixobj
 x64/
