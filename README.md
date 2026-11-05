@@ -208,3 +208,4 @@ dotnet test SnoozeIt.slnx -c Release --no-build
 ```
 
 Automated GitHub Actions workflows enforce build passing, test execution, and WiX installer compilation on every push and pull request.
+
