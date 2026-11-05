@@ -52,6 +52,20 @@ public static partial class NativeMethods
     public const uint PROCESS_ALL_ACCESS_FLAGS =
         PROCESS_SUSPEND_RESUME | PROCESS_SET_QUOTA | PROCESS_QUERY_LIMITED_INFORMATION;
 
+    // ── Named Pipe Client Telemetry (kernel32.dll) ───────────────────────────
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool GetNamedPipeClientSessionId(
+        SafeHandle pipe,
+        out uint clientSessionId);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool GetNamedPipeClientProcessId(
+        SafeHandle pipe,
+        out uint clientProcessId);
+
     // ── Window Focus Tracking (user32.dll) ───────────────────────────────────
 
     public delegate void WinEventDelegate(

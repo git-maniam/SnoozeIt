@@ -12,7 +12,7 @@ public sealed partial class MainPage : Page
     public MainPage()
     {
         InitializeComponent();
-        ProcessListView.ItemsSource = ViewModel.Processes;
+        ProcessGroupListView.ItemsSource = ViewModel.Groups;
 
         ViewModel.PropertyChanged += (s, e) =>
         {
@@ -24,6 +24,11 @@ public sealed partial class MainPage : Page
                     SnoozedCountTextBlock.Text = $"{ViewModel.SnoozedCount} Apps";
                 else if (e.PropertyName == nameof(ViewModel.IsServiceConnected))
                     ServiceStatusTextBlock.Text = ViewModel.IsServiceConnected ? "Privileged Service Mode" : "Direct User Mode";
+                else if (e.PropertyName == nameof(ViewModel.FeedbackMessage) && !string.IsNullOrEmpty(ViewModel.FeedbackMessage))
+                {
+                    ActionInfoBar.Message = ViewModel.FeedbackMessage;
+                    ActionInfoBar.IsOpen = true;
+                }
             });
         };
     }
@@ -52,6 +57,22 @@ public sealed partial class MainPage : Page
         if (sender is Button btn && btn.Tag is ProcessItemViewModel item)
         {
             await ViewModel.ResumeProcessAsync(item);
+        }
+    }
+
+    private async void OnSnoozeGroupClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is ProcessGroupViewModel group)
+        {
+            await ViewModel.SnoozeGroupAsync(group);
+        }
+    }
+
+    private async void OnThawGroupClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is ProcessGroupViewModel group)
+        {
+            await ViewModel.ResumeGroupAsync(group);
         }
     }
 

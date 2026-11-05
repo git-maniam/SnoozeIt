@@ -8,8 +8,9 @@
     xmlns:local="using:SnoozeIt_Client"
     mc:Ignorable="d">
 
-    <Grid Padding="24" RowSpacing="16">
+    <Grid Padding="24" RowSpacing="12">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -46,56 +47,114 @@
             </Grid>
         </Border>
 
+        <!-- Feedback InfoBar / Status Banner -->
+        <InfoBar x:Name="ActionInfoBar" Grid.Row="1" IsOpen="False" Severity="Informational" />
+
         <!-- Search & Control Bar -->
-        <Grid Grid.Row="1" ColumnSpacing="12">
+        <Grid Grid.Row="2" ColumnSpacing="12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <TextBox x:Name="SearchBox" Grid.Column="0" PlaceholderText="Search active processes..." TextChanged="OnSearchTextChanged" />
+            <TextBox x:Name="SearchBox" Grid.Column="0" PlaceholderText="Search active processes or service groups..." TextChanged="OnSearchTextChanged" />
             <Button x:Name="RefreshBtn" Grid.Column="1" Content="🔄 Refresh" Click="OnRefreshClicked" />
         </Grid>
 
-        <!-- Process List View -->
-        <ListView x:Name="ProcessListView" Grid.Row="2" SelectionMode="None">
+        <!-- Tree View: Grouped Process Expander List -->
+        <ListView x:Name="ProcessGroupListView" Grid.Row="3" SelectionMode="None">
             <ListView.ItemTemplate>
                 <DataTemplate>
-                    <Grid Padding="12" Margin="0,4" Background="{ThemeResource LayerFillColorDefaultBrush}"
-                          CornerRadius="6" ColumnSpacing="16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="2*" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
+                    <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                              IsExpanded="{Binding IsExpanded, Mode=TwoWay}" Margin="0,3">
+                        <Expander.Header>
+                            <Grid ColumnSpacing="16" HorizontalAlignment="Stretch">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2.5*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
 
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding FriendlyName}" FontWeight="SemiBold" Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                            <TextBlock Text="{Binding ProcessName}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        </StackPanel>
+                                <!-- Process Group Title & Count -->
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{Binding FriendlyName}" FontWeight="SemiBold" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                                        <TextBlock Text="{Binding InstanceCountFormatted}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding GroupName}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
 
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="Working Set" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <TextBlock Text="{Binding WorkingSetFormatted}" Style="{ThemeResource BodyTextBlockStyle}" />
-                        </StackPanel>
+                                <!-- Total Working Set for Group -->
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Group RAM" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="{Binding TotalWorkingSetFormatted}" Style="{ThemeResource BodyTextBlockStyle}" />
+                                </StackPanel>
 
-                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                            <TextBlock Text="Snooze Score" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <TextBlock Text="{Binding ScoreDisplay}" Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                        </StackPanel>
+                                <!-- Peak Snooze Score -->
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                    <TextBlock Text="Snooze Score" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="{Binding ScoreDisplay}" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                                </StackPanel>
 
-                        <StackPanel Grid.Column="3" VerticalAlignment="Center">
-                            <TextBlock Text="Status" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <TextBlock Text="{Binding StatusText}" Style="{ThemeResource CaptionTextBlockStyle}" />
-                        </StackPanel>
+                                <!-- Group Status -->
+                                <StackPanel Grid.Column="3" VerticalAlignment="Center">
+                                    <TextBlock Text="Status" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="{Binding StatusText}" Style="{ThemeResource CaptionTextBlockStyle}" />
+                                </StackPanel>
 
-                        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <Button Content="💤 Snooze" Click="OnSnoozeClicked" Tag="{Binding}" />
-                            <Button Content="⚡ Thaw" Click="OnThawClicked" Tag="{Binding}" />
-                        </StackPanel>
-                    </Grid>
+                                <!-- Group Quick Actions -->
+                                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                    <Button Content="💤 Snooze" Click="OnSnoozeGroupClicked" Tag="{Binding}" />
+                                    <Button Content="⚡ Thaw" Click="OnThawGroupClicked" Tag="{Binding}" />
+                                </StackPanel>
+                            </Grid>
+                        </Expander.Header>
+
+                        <!-- Expanded Child Process Instances (Tree Nodes) -->
+                        <Expander.Content>
+                            <ItemsControl ItemsSource="{Binding Items}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Padding="16,8,8,8" Margin="0,2" Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                              CornerRadius="4" ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="2.5*" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Instance PID badge -->
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                <Border Background="{ThemeResource AccentFillColorTertiaryBrush}" CornerRadius="3" Padding="6,2">
+                                                    <TextBlock Text="{Binding PidDisplay}" Style="{ThemeResource CaptionTextBlockStyle}" FontWeight="SemiBold" />
+                                                </Border>
+                                                <TextBlock Text="{Binding FriendlyName}" VerticalAlignment="Center" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            </StackPanel>
+
+                                            <!-- RAM -->
+                                            <TextBlock Grid.Column="1" Text="{Binding WorkingSetFormatted}" VerticalAlignment="Center" Style="{ThemeResource CaptionTextBlockStyle}" />
+
+                                            <!-- Score -->
+                                            <TextBlock Grid.Column="2" Text="{Binding ScoreDisplay}" VerticalAlignment="Center" Style="{ThemeResource CaptionTextBlockStyle}" FontWeight="SemiBold" />
+
+                                            <!-- Status -->
+                                            <TextBlock Grid.Column="3" Text="{Binding StatusText}" VerticalAlignment="Center" Style="{ThemeResource CaptionTextBlockStyle}" />
+
+                                            <!-- Child Actions -->
+                                            <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                <Button Content="💤" ToolTipService.ToolTip="Snooze this process" Click="OnSnoozeClicked" Tag="{Binding}" Padding="8,4" />
+                                                <Button Content="⚡" ToolTipService.ToolTip="Thaw this process" Click="OnThawClicked" Tag="{Binding}" Padding="8,4" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Expander.Content>
+                    </Expander>
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>

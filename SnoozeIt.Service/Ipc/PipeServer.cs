@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using SnoozeIt.Core.Engine;
+using SnoozeIt.Core.Native;
 
 /// <summary>
 /// Implements the JSON-RPC named pipe server (\\.\pipe\SnoozeIt_IPC)
@@ -189,22 +190,26 @@ public sealed class PipeServer
             int callerSessionId = -1;
             bool isCallerAdmin = false;
 
-            // Impersonate connected named pipe client to inspect user token
-            stream.RunAsClient(() =>
+            // Retrieve client session ID directly from the named pipe handle
+            if (NativeMethods.GetNamedPipeClientSessionId(stream.SafePipeHandle, out uint pipeClientSession))
             {
-                using var identity = WindowsIdentity.GetCurrent();
-                var principal = new WindowsPrincipal(identity);
-                isCallerAdmin = principal.IsInRole(WindowsBuiltInRole.Administrator);
+                callerSessionId = (int)pipeClientSession;
+            }
 
-                try
+            // Impersonate connected named pipe client to inspect user token admin role
+            try
+            {
+                stream.RunAsClient(() =>
                 {
-                    using var currentProc = Process.GetCurrentProcess();
-                    callerSessionId = Process.GetProcessById(currentProc.Id).SessionId;
-                }
-                catch
-                {
-                }
-            });
+                    using var identity = WindowsIdentity.GetCurrent();
+                    var principal = new WindowsPrincipal(identity);
+                    isCallerAdmin = principal.IsInRole(WindowsBuiltInRole.Administrator);
+                });
+            }
+            catch
+            {
+                // Fall back if impersonation fails
+            }
 
             // Administrators have global management authorization across all sessions
             if (isCallerAdmin)
@@ -219,7 +224,7 @@ public sealed class PipeServer
                 using var targetProc = Process.GetProcessById(targetPid);
                 if (callerSessionId != -1 && targetProc.SessionId != callerSessionId)
                 {
-                    error = $"Access denied: Target process (Session {targetProc.SessionId}) belongs to another user session.";
+                    error = $"Access denied: Target process (Session {targetProc.SessionId}) belongs to another user session (Client Session {callerSessionId}).";
                     return false;
                 }
             }
