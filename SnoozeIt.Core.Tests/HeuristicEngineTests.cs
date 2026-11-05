@@ -44,7 +44,7 @@ public class HeuristicEngineTests
         // W_mem  = min(30, 400/50) = 8
         // No penalties
         // Score  = 40 + 8 = 48 (but let's just assert > 40)
-        Assert.IsTrue(result.Score >= 40, $"Expected score >= 40 but got {result.Score}");
+        Assert.IsGreaterThanOrEqualTo(40, result.Score, $"Expected score >= 40 but got {result.Score}");
         Assert.IsFalse(result.IsCritical);
     }
 
@@ -67,7 +67,7 @@ public class HeuristicEngineTests
 
         // Audio penalty = 80, focus penalty = 90, net penalty = 40
         // Score should be clamped to 0
-        Assert.IsTrue(result.Score < 20, $"Expected score < 20 but got {result.Score}");
+        Assert.IsLessThan(20, result.Score, $"Expected score < 20 but got {result.Score}");
         Assert.AreEqual(RecommendationTier.DoNotSnooze, result.Tier);
     }
 
@@ -90,7 +90,7 @@ public class HeuristicEngineTests
 
         // W_idle = 40 (capped), W_mem = 30 (capped), no penalties
         // Score = 70 => SafeToSnooze
-        Assert.IsTrue(result.Score >= 70, $"Expected score >= 70 but got {result.Score}");
+        Assert.IsGreaterThanOrEqualTo(70, result.Score, $"Expected score >= 70 but got {result.Score}");
         Assert.AreEqual(RecommendationTier.SafeToSnooze, result.Tier);
     }
 
