@@ -30,7 +30,7 @@ jobs:
 
       - name: Publish Service and Client
         run: |
-          dotnet publish SnoozeIt.Service/SnoozeIt.Service.csproj -c Release -r win-x64 -o publish/service
+          dotnet publish SnoozeIt.Service/SnoozeIt.Service.csproj -c Release -r win-x64 -o publish/service --self-contained true
           dotnet publish SnoozeIt.Client/SnoozeIt.Client.csproj -c Release -r win-x64 -o publish/client --self-contained true
 
       - name: Run unit tests (if any)
