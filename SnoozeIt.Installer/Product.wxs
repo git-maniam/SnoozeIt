@@ -8,8 +8,8 @@
         <Directory Id="INSTALLFOLDER" Name="SnoozeIt">
           <Component Id="ServiceExe" Guid="{33333333-3333-3333-3333-333333333333}" Win64="yes">
             <File Id="ServiceExeFile" Source="..\publish\service\SnoozeIt.Service.exe" KeyPath="yes" />
-            <ServiceInstall Id="SnoozeItServiceInstall" Type="ownProcess" Name="SnoozeIt.Service" DisplayName="SnoozeIt Service" Start="auto" ErrorControl="normal" />
-            <ServiceControl Id="SnoozeItServiceControl" Name="SnoozeIt.Service" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
+            <ServiceInstall Id="SnoozeItServiceInstall" Type="ownProcess" Name="SnoozeItService" DisplayName="SnoozeIt Service" Start="auto" ErrorControl="normal" />
+            <ServiceControl Id="SnoozeItServiceControl" Name="SnoozeItService" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
           </Component>
         </Directory>
       </Directory>
