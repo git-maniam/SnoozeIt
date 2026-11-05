@@ -42,9 +42,13 @@ public static class SafetyFilter
             return false;
         }
 
-        if (BlacklistedBinaries.Contains(processName))
+        string cleanName = processName.Trim();
+        string withExe = cleanName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? cleanName : cleanName + ".exe";
+        string withoutExe = cleanName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? cleanName[..^4] : cleanName;
+
+        if (BlacklistedBinaries.Contains(cleanName) || BlacklistedBinaries.Contains(withExe) || BlacklistedBinaries.Contains(withoutExe))
         {
-            reason = $"'{processName}' is on the critical-process blacklist.";
+            reason = $"'{processName}' is on the critical system service blacklist.";
             return false;
         }
 
