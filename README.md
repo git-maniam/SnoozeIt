@@ -144,21 +144,27 @@ Once opened, the dashboard displays live memory metrics and a grouped tree of ru
 └────────────────────────────────────────────────────────────────────────┘
   [⚡ Snooze All Safe]   [🔍 Filter Processes...]
 ──────────────────────────────────────────────────────────────────────────
-  ▼ msedge (6 instances)     Total RAM: 420.5 MB   Score: 82/100  [Snooze]
-      ├─ PID 12404  |  CPU: 0.0%  |  RAM: 85.2 MB   |  Score: 82  [Snooze]
-      ├─ PID 13180  |  CPU: 0.0%  |  RAM: 72.1 MB   |  Score: 78  [Snooze]
+  ▼ 💤 Snoozed Services (Pinned Top Level)     Total RAM: 240.2 MB  [Snooze & Wake 🔘]
+      ├─ msedge (PID 1420)  |  CPU: 0.0%  |  RAM: 120.1 MB  [Snooze & Wake 🔘]
+      └─ Code (PID 5892)    |  CPU: 0.0%  |  RAM: 120.1 MB  [Snooze & Wake 🔘]
+  ▼ msedge (5 active instances)                Total RAM: 300.4 MB  [Snooze & Wake ⚪]
+      ├─ PID 12404  |  CPU: 0.0%  |  RAM: 85.2 MB   |  Score: 82  [Snooze & Wake ⚪]
       └─ ...
-  ▶ Code (4 instances)       Total RAM: 680.1 MB   Score: 65/100  [Snooze]
+  ▼ system (Critical OS Process)               Total RAM: 150.0 MB  [Snooze & Wake ⚪ (Disabled)]
+                                                                    ⛔ Unsafe to Snooze
 ```
 
 #### Controls & Actions
 
 - **⚡ Snooze All Safe**: Scans all active processes and hibernates every safe candidate ($S_p \ge 70$) in a single click.
-- **Process Group Expander**: Click any group header to expand or collapse child processes.
-- **Group Snooze / Thaw**: Click the group action button to suspend or wake all instances in that process family simultaneously.
-- **Individual Process Controls**:
-  - **💤 Snooze**: Immediately suspends process threads and flushes its working set memory pages.
-  - **☀️ Thaw**: Resumes thread execution and restores the application to normal operation.
+- **Snooze & Wake Slider (`ToggleSwitch`)**:
+  - Slide or click the toggle on any process card or group header to instantly hibernate (On / `Snooze`) or restore (Off / `Wake`) the workload.
+  - Dynamically updates thread suspension state and working set memory pages in real time.
+- **Pinned 'Snoozed Services' Section**:
+  - Whenever a service or process is snoozed, it automatically moves into the dedicated **Snoozed Services** high-level folder pinned at the top of the tree view.
+  - Thawing the workload returns it immediately to its regular process group below.
+- **'Unsafe to Snooze' Protection**:
+  - System-critical operating system binaries (e.g., `csrss.exe`, `lsass.exe`, `services.exe`) and active foreground windows have their slider permanently locked and greyed out with a red **Unsafe to Snooze** badge underneath to guarantee OS stability.
 - **Auto-Thaw on Focus**: Switch windows using `Alt+Tab` or click on any snoozed window. The foreground hook detects the focus transition and wakes the target process instantly.
 
 ---

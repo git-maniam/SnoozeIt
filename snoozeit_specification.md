@@ -422,6 +422,7 @@ I will now create the solution and the first project files.
 | **Phase 5: Automation Script & 60-Second Live Demo** | Automation | P1 | **Done** | PowerShell end-to-end demo launching synthetic workloads and showcasing RAM reclamation. |
 | **Phase 5: Hierarchical Process Grouping & Tree Dashboard View** | `SnoozeIt.Client` | P1 | **Done** | Group processes by name in tree format with instance badges, aggregate RAM, peak score, and collective group actions. |
 | **Phase 5: Snoozing Human Application Icon & Branding** | `SnoozeIt.Client` | P1 | **Done** | Custom 'Snoozing Human' Fluent Design multi-res icon (256x256 to 16x16 .ico and WinUI 3 assets) integrated into Client, Window TitleBar, WiX Installer, and Start Menu. |
+| **Phase 5: Snooze & Wake Toggle Slider and Pinned Snoozed Section** | `SnoozeIt.Client` | P1 | **In Progress** | Replaced separate Snooze/Thaw buttons with an idiomatic 'Snooze & Wake' slider (WinUI 3 ToggleSwitch) on groups and child rows; dynamically moves hibernated processes to a pinned top-level 'Snoozed Services' tree group; greys out unsafe system/foreground processes with red 'Unsafe to Snooze' label. |
 
 ---
 

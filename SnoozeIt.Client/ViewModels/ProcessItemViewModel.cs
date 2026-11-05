@@ -25,11 +25,21 @@ public partial class ProcessItemViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StatusText))]
+    [NotifyPropertyChangedFor(nameof(IsSnoozed))]
     private SnoozeState _state = SnoozeState.Active;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StatusText))]
     private bool _isPlayingAudio;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowUnsafeWarning))]
+    [NotifyPropertyChangedFor(nameof(UnsafeVisibility))]
+    private bool _isSafeToSnooze = true;
+
+    public bool IsSnoozed => State == SnoozeState.Snoozed;
+    public bool ShowUnsafeWarning => !IsSafeToSnooze;
+    public Microsoft.UI.Xaml.Visibility UnsafeVisibility => IsSafeToSnooze ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
 
     public string PidDisplay => $"PID: {ProcessId}";
     public string WorkingSetFormatted => $"{(WorkingSetBytes / (1024.0 * 1024.0)):F1} MB";

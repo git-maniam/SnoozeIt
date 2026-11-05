@@ -44,6 +44,42 @@ public sealed partial class MainPage : Page
         await ViewModel.RefreshDataAsync();
     }
 
+    private async void OnItemToggleToggled(object sender, RoutedEventArgs e)
+    {
+        if (sender is ToggleSwitch toggle && toggle.Tag is ProcessItemViewModel item)
+        {
+            if (toggle.IsOn != item.IsSnoozed)
+            {
+                if (toggle.IsOn)
+                {
+                    await ViewModel.SnoozeProcessAsync(item);
+                }
+                else
+                {
+                    await ViewModel.ResumeProcessAsync(item);
+                }
+            }
+        }
+    }
+
+    private async void OnGroupToggleToggled(object sender, RoutedEventArgs e)
+    {
+        if (sender is ToggleSwitch toggle && toggle.Tag is ProcessGroupViewModel group)
+        {
+            if (toggle.IsOn != group.IsSnoozed)
+            {
+                if (toggle.IsOn)
+                {
+                    await ViewModel.SnoozeGroupAsync(group);
+                }
+                else
+                {
+                    await ViewModel.ResumeGroupAsync(group);
+                }
+            }
+        }
+    }
+
     private async void OnSnoozeClicked(object sender, RoutedEventArgs e)
     {
         if (sender is Button btn && btn.Tag is ProcessItemViewModel item)

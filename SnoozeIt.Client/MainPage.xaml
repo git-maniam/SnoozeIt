@@ -104,10 +104,21 @@
                                     <TextBlock Text="{Binding StatusText}" Style="{ThemeResource CaptionTextBlockStyle}" />
                                 </StackPanel>
 
-                                <!-- Group Quick Actions -->
-                                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                    <Button Content="💤 Snooze" Click="OnSnoozeGroupClicked" Tag="{Binding}" />
-                                    <Button Content="⚡ Thaw" Click="OnThawGroupClicked" Tag="{Binding}" />
+                                <!-- Group Slider Action -->
+                                <StackPanel Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="2">
+                                    <ToggleSwitch Header="Snooze &amp; Wake"
+                                                  OffContent="Awake"
+                                                  OnContent="Snoozed"
+                                                  IsOn="{Binding IsSnoozed, Mode=OneWay}"
+                                                  IsEnabled="{Binding IsSafeToSnooze}"
+                                                  Toggled="OnGroupToggleToggled"
+                                                  Tag="{Binding}" />
+                                    <TextBlock Text="Unsafe to Snooze"
+                                               Foreground="#FFFF4D4D"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Visibility="{Binding UnsafeVisibility}"
+                                               Margin="0,-4,0,0" />
                                 </StackPanel>
                             </Grid>
                         </Expander.Header>
@@ -144,10 +155,20 @@
                                             <!-- Status -->
                                             <TextBlock Grid.Column="3" Text="{Binding StatusText}" VerticalAlignment="Center" Style="{ThemeResource CaptionTextBlockStyle}" />
 
-                                            <!-- Child Actions -->
-                                            <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                                                <Button Content="💤" ToolTipService.ToolTip="Snooze this process" Click="OnSnoozeClicked" Tag="{Binding}" Padding="8,4" />
-                                                <Button Content="⚡" ToolTipService.ToolTip="Thaw this process" Click="OnThawClicked" Tag="{Binding}" Padding="8,4" />
+                                            <!-- Child Slider Action -->
+                                            <StackPanel Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="2">
+                                                <ToggleSwitch OffContent="Awake"
+                                                              OnContent="Snoozed"
+                                                              IsOn="{Binding IsSnoozed, Mode=OneWay}"
+                                                              IsEnabled="{Binding IsSafeToSnooze}"
+                                                              Toggled="OnItemToggleToggled"
+                                                              Tag="{Binding}" />
+                                                <TextBlock Text="Unsafe to Snooze"
+                                                           Foreground="#FFFF4D4D"
+                                                           FontSize="10"
+                                                           FontWeight="SemiBold"
+                                                           Visibility="{Binding UnsafeVisibility}"
+                                                           Margin="0,-4,0,0" />
                                             </StackPanel>
                                         </Grid>
                                     </DataTemplate>
