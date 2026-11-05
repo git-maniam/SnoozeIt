@@ -41,9 +41,10 @@ jobs:
 
       - name: Build MSI with WiX
         run: |
+          heat dir publish/client -cg ClientComponents -dr INSTALLFOLDER -scom -sreg -srd -var "var.ClientPublishDir" -o SnoozeIt.Installer/ClientComponents.wxs
           cd SnoozeIt.Installer
-          candle Product.wxs
-          light Product.wixobj -o SnoozeItInstaller.msi
+          candle -dClientPublishDir="..\publish\client" Product.wxs ClientComponents.wxs
+          light Product.wixobj ClientComponents.wixobj -sval -o SnoozeItInstaller.msi
 
       - name: Sign MSI with self‑signed cert
         env:
