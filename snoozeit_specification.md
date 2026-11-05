@@ -398,3 +398,12 @@ I will now create the solution and the first project files.
 | **Phase 4: WinUI 3 Modern Dashboard UI (Mica Alt & Fluent 2)** | `SnoozeIt.Client` | P0 | **Done** | WinUI 3 desktop dashboard with live metrics banner, process list, and snoozeability circular meters. |
 | **Phase 4: System Tray Integration & Background Minimization** | `SnoozeIt.Client` | P1 | **Done** | System tray minimization and context quick actions. |
 | **Phase 5: Automation Script & 60-Second Live Demo** | Automation | P1 | **Done** | PowerShell end-to-end demo launching synthetic workloads and showcasing RAM reclamation. |
+
+
+### 12. Defect & Bug Resolution Log (Synced with GitHub Project)
+
+| Bug ID / Title | Category | Root Cause | Fix / Resolution | Status |
+|---|---|---|---|---|
+| **[Bug] Service SnoozeIt.Service failed to start during MSI installation** | Packaging / Service | Standard `dotnet build` produces an apphost wrapper that requires `SnoozeIt.Service.dll`. WiX only copied `.exe`, leading to crash on service startup. | Configured `PublishSingleFile=true`, published self-extracting single-file binary, and updated WiX paths. | **Resolved** |
+| **[Bug] Signtool Error: Unexpected token 'sign' and Missing Code Signing EKU** | CI/CD | PowerShell interpreted quoted executable as string; self-signed certificate was missing Code Signing EKU (`1.3.6.1.5.5.7.3.3`). | Switched to `shell: cmd` and regenerated PFX using `-Type CodeSigningCert`. | **Resolved** |
+| **[Bug] MSBUILD Error MSB1009 and Solution-level RuntimeIdentifier rejection** | Build System | Solution was saved as `.slnx` while workflow looked for `.sln`; passing `-r win-x64` to `.slnx` is disallowed by MSBuild. | Standardized workflow on `SnoozeIt.slnx` and set default RID in `SnoozeIt.Client.csproj`. | **Resolved** |
