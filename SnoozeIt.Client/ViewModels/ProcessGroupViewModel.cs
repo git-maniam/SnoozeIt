@@ -58,3 +58,4 @@ public partial class ProcessGroupViewModel : ObservableObject
         OnPropertyChanged(nameof(StatusText));
     }
 }
+
