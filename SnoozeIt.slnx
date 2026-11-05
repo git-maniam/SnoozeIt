@@ -1,7 +1,6 @@
 <Solution>
-  <Project Path="SnoozeIt.Client/SnoozeIt.Client.csproj">
-    <Platform Project="x86" />
-  </Project>
+  <Project Path="SnoozeIt.Client/SnoozeIt.Client.csproj" />
+  <Project Path="SnoozeIt.Core.Tests/SnoozeIt.Core.Tests.csproj" />
   <Project Path="SnoozeIt.Core/SnoozeIt.Core.csproj" />
   <Project Path="SnoozeIt.Installer/SnoozeIt.Installer.wixproj" />
   <Project Path="SnoozeIt.Service/SnoozeIt.Service.csproj" />
