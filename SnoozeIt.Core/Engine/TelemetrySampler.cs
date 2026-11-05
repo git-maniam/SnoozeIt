@@ -132,3 +132,4 @@ public sealed class TelemetrySampler
         return results;
     }
 }
+

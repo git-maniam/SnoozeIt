@@ -98,3 +98,4 @@ public sealed class WindowFocusWatcher : IDisposable
         Stop();
     }
 }
+

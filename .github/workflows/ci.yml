@@ -28,6 +28,11 @@ jobs:
       - name: Build solution (Release)
         run: dotnet build SnoozeIt.slnx -c Release --no-restore
 
+      - name: Publish Service and Client
+        run: |
+          dotnet publish SnoozeIt.Service/SnoozeIt.Service.csproj -c Release -r win-x64 -o publish/service
+          dotnet publish SnoozeIt.Client/SnoozeIt.Client.csproj -c Release -r win-x64 -o publish/client
+
       - name: Run unit tests (if any)
         run: dotnet test SnoozeIt.slnx -c Release --no-build --logger "trx"
 

@@ -13,3 +13,4 @@ public class AudioDetectorTests
         Assert.IsNotNull(activePids);
     }
 }
+

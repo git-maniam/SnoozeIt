@@ -171,3 +171,4 @@ public static class AudioDetector
         int SetDuckingPreference([MarshalAs(UnmanagedType.Bool)] bool optOut);
     }
 }
+

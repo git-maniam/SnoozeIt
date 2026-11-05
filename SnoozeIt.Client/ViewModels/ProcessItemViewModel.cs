@@ -36,3 +36,4 @@ public partial class ProcessItemViewModel : ObservableObject
         _ => IsPlayingAudio ? "🔊 Playing Audio" : "🟢 Running"
     };
 }
+
