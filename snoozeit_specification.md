@@ -1,0 +1,328 @@
+# SnoozeIt: Autonomous Process Hibernation & Working Set Eviction Engine
+## Software Architecture & Implementation Specification (v1.0.0)
+**Target Platform:** Windows 10 (Build 19041+) / Windows 11 (All Builds)  
+**Framework:** .NET 9 (C# 13, Native AOT-ready)  
+**Execution Context:** Dual-Mode (Privileged Windows Service + Low-Privilege Per-User Desktop UI)
+
+---
+
+## 1. Executive Summary & Value Proposition
+
+Standard operating systems allow idle background processes (Electron runtimes, idle IDE instances, background browser tabs, game launchers) to retain gigabytes of committed physical RAM and consume continuous background CPU cycles. 
+
+**SnoozeIt** is an intelligent, low-overhead resource hibernation engine that:
+1. Detects inactive background workloads using hardware, network, audio, and UI telemetry.
+2. Atomically halts user-mode thread scheduling via low-level Windows NT kernel APIs (`NtSuspendProcess`).
+3. Flushes physical RAM working sets to the Windows paging subsystem (`EmptyWorkingSet`).
+4. Instantly wakes ("thaws") the target on demand or upon window focus in $< 100\text{ ms}$ with zero state loss.
+5. Runs safely in both standard user and elevated administrator environments across multi-user sessions.
+
+---
+
+## 2. Multi-User & Privilege Architecture
+
+A major challenge in process management on Windows is that non-administrative users cannot inspect or manipulate processes owned by other sessions or elevated tokens (`EPERM` / `STATUS_ACCESS_DENIED`). SnoozeIt solves this via a **split-daemon architecture**:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        SESSION 0 (System Space)                        │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │ SnoozeIt.Service (Windows Service - LocalSystem)                 │  │
+│  │  - SeDebugPrivilege enabled                                      │  │
+│  │  - Native NT kernel invoker (NtSuspendProcess, EmptyWorkingSet)  │  │
+│  │  - Named Pipe Server: \\.\pipe\SnoozeIt_IPC                      │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+└───────────────────────────────────▲────────────────────────────────────┘
+                                    │ IPC (DACL-Secured Named Pipe)
+┌───────────────────────────────────▼────────────────────────────────────┐
+│                    USER SESSION (Interactive Desktop)                  │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │ SnoozeIt.Client (WPF / Modern Fluent UI + Taskbar Tray)           │  │
+│  │  - Standard User Token (Medium Integrity)                        │  │
+│  │  - WinEvent Hook Listener (EVENT_SYSTEM_FOREGROUND)              │  │
+│  │  - Smart Recommendation Heuristic Engine                         │  │
+│  │  - Fallback: Direct Local Mode (if Service is not installed)     │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2.1 Privilege Modes
+* **Installed Mode (Enterprise/Multi-User):** `SnoozeIt.Service` runs as `NT AUTHORITY\SYSTEM`. Any standard (non-admin) user can run `SnoozeIt.Client`. The service enforces access control: a non-admin user can only issue suspend/resume commands for processes originating from their own `SessionId`.
+* **Standalone / Portable Mode:** If the Windows Service is not detected, `SnoozeIt.Client` operates in standalone user-mode. It can manage all processes running within the current user's security token and gracefully badges privileged processes with a "Requires Admin Service" lock icon.
+
+---
+
+## 3. Core Engine & Win32/NT Low-Level API Specifications
+
+### 3.1 P/Invoke Method Signatures (To be generated via `Microsoft.Windows.CsWin32` or manual P/Invoke)
+
+```csharp
+namespace SnoozeIt.Core.Native;
+
+using System;
+using System.Runtime.InteropServices;
+
+internal static partial class NativeMethods
+{
+    // --- Kernel Suspension & Thawing (ntdll.dll) ---
+    [LibraryImport("ntdll.dll")]
+    public static partial int NtSuspendProcess(IntPtr processHandle);
+
+    [LibraryImport("ntdll.dll")]
+    public static partial int NtResumeProcess(IntPtr processHandle);
+
+    // --- Memory Eviction (psapi.dll / kernel32.dll) ---
+    [LibraryImport("psapi.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool EmptyWorkingSet(IntPtr hProcess);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool SetProcessWorkingSetSizeEx(
+        IntPtr hProcess,
+        IntPtr dwMinimumWorkingSetSize,
+        IntPtr dwMaximumWorkingSetSize,
+        uint flags);
+
+    public const uint QUOTA_LIMITS_HARDWS_MIN_ENABLE = 0x00000001;
+    public const uint QUOTA_LIMITS_HARDWS_MIN_DISABLE = 0x00000002;
+
+    // --- Process Inspection & Security (kernel32.dll / advapi32.dll) ---
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    public static partial IntPtr OpenProcess(uint processAccess, [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle, int processId);
+
+    public const uint PROCESS_SUSPEND_RESUME = 0x0800;
+    public const uint PROCESS_SET_QUOTA = 0x0100;
+    public const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+
+    // --- Window Focus Tracking (user32.dll) ---
+    public delegate void WinEventDelegate(
+        IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    public static partial IntPtr SetWinEventHook(
+        uint eventMin, uint eventMax, IntPtr hmodWinEventProc, WinEventDelegate lpfnWinEventProc,
+        uint idProcess, uint idThread, uint dwFlags);
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool UnhookWinEvent(IntPtr hWinEventHook);
+
+    [LibraryImport("user32.dll")]
+    public static partial IntPtr GetForegroundWindow();
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    public static partial uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool IsHungAppWindow(IntPtr hWnd);
+}
+```
+
+### 3.2 Atomic Eviction Execution Flow
+To snooze a process without data corruption:
+1. **Safety Check:** Query if the process has hung windows via `IsHungAppWindow`. If hung, abort.
+2. **Atomic Pause:** Call `NtSuspendProcess(hProcess)`. Verify the return value is `0` (`STATUS_SUCCESS`).
+3. **Paging Eviction:** 
+   * Execute `EmptyWorkingSet(hProcess)`.
+   * Apply `SetProcessWorkingSetSizeEx(hProcess, (IntPtr)(-1), (IntPtr)(-1), QUOTA_LIMITS_HARDWS_MIN_ENABLE)`.
+4. **State Transition:** Update internal state tracker to `Snoozed`. Record memory reclaimed ($\text{PhysicalRAM}_{\text{before}} - \text{PhysicalRAM}_{\text{after}}$).
+
+---
+
+## 4. Smart Process Scoring & Recommendation Engine
+
+The engine computes a **Snoozeability Score** ($S \in [0, 100]$) for every running process every $5\text{ seconds}$.
+
+### 4.1 Scoring Formula
+
+$$S = \text{Clamp}\left( W_{\text{idle}} + W_{\text{mem}} - P_{\text{audio}} - P_{\text{io}} - P_{\text{net}} - P_{\text{focus}} - P_{\text{critical}},\, 0,\, 100 \right)$$
+
+Where:
+* **$W_{\text{idle}}$ (Inactivity Weight, Max 40 pts):** Points increase monotonically with time elapsed since the process was the foreground window ($5\text{ pts}$ per minute, capped at 40).
+* **$W_{\text{mem}}$ (RAM Consumption Weight, Max 30 pts):** $1\text{ pt}$ per $50\text{ MB}$ of Private Working Set, capped at 30.
+* **$P_{\text{audio}}$ (Active Audio Penalty, 80 pts):** If the process is currently streaming audio via Windows Core Audio (WASAPI), $P_{\text{audio}} = 80$. This prevents muting Spotify, YouTube tabs, or Discord calls.
+* **$P_{\text{io}}$ (Disk I/O Penalty, 50 pts):** If disk write throughput exceeds $500\text{ KB/s}$ (active compile, render, or download), $P_{\text{io}} = 50$.
+* **$P_{\text{net}}$ (Network Activity Penalty, 40 pts):** If open active TCP sockets with $> 50\text{ KB/s}$ transfer rate are detected, $P_{\text{net}} = 40$.
+* **$P_{\text{focus}}$ (Focus Recency Penalty, 90 pts):** If the process was active within the last $60\text{ seconds}$, $P_{\text{focus}} = 90$.
+* **$P_{\text{critical}}$ (Safety Blacklist Penalty, $\infty$ pts):** Hard set to 0 score if the process is critical.
+
+### 4.2 Recommendation Categories
+* **Score $\ge 70$ (Tier 1: Safe to Snooze):** Highlighted in green. Idle Electron apps, closed background browsers, background store clients (Steam, Epic, Battle.net).
+* **Score $40 - 69$ (Tier 2: Snooze with Caution):** Idle IDEs without active build tasks, office tools with saved states.
+* **Score $< 40$ (Tier 3: Do Not Snooze):** Active workloads, media players, communications software.
+
+### 4.3 Active Audio Detection (WASAPI / `IAudioSessionEnumerator`)
+To prevent snoozing apps playing background audio, use the Windows Core Audio COM API:
+* Interrogate `IMMDeviceEnumerator` $\to$ default multimedia device.
+* Retrieve `IAudioSessionManager2`.
+* Call `GetSessionEnumerator()` and loop through `IAudioSessionControl2`.
+* Check `GetState()` for `AudioSessionStateActive`. If true, extract the `ProcessId`.
+
+### 4.4 The Critical Safeguard Whitelist (Hardcoded)
+Never allow suspension of the following binaries under any condition:
+```csharp
+public static readonly FrozenSet<string> BlacklistedBinaries = new[]
+{
+    "system", "idle", "smss.exe", "csrss.exe", "wininit.exe", "services.exe",
+    "lsass.exe", "svchost.exe", "dwm.exe", "explorer.exe", "taskhostw.exe",
+    "sihost.exe", "fontdrvhost.exe", "runtimebroker.exe", "shellexperiencehost.exe",
+    "searchindexer.exe", "securityhealthservice.exe", "msmpeng.exe",
+    "snoozeit.client.exe", "snoozeit.service.exe"
+}.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+```
+
+---
+
+## 5. IPC Protocol & Data Contracts
+
+The Service and Client communicate over a secure Named Pipe: `\\.\pipe\SnoozeIt_IPC`.
+Pipe security: Configured with a `PipeSecurity` descriptor allowing `LocalSystem` (Full Control) and `AuthenticatedUsers` (Read/Write only).
+
+### 5.1 JSON-RPC Payload Contracts
+
+#### Suspend Request (`client -> service`)
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "uuid-1234",
+  "method": "Process.Suspend",
+  "params": {
+    "processId": 14208,
+    "trimWorkingSet": true,
+    "originatingSessionId": 1
+  }
+}
+```
+
+#### Resume Request (`client -> service`)
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "uuid-1235",
+  "method": "Process.Resume",
+  "params": {
+    "processId": 14208,
+    "originatingSessionId": 1
+  }
+}
+```
+
+#### Telemetry Event (`service -> client`)
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "Telemetry.ProcessReclaimed",
+  "params": {
+    "processId": 14208,
+    "processName": "Slack.exe",
+    "reclaimedBytes": 482344960,
+    "elapsedMicroseconds": 4120
+  }
+}
+```
+
+---
+
+## 6. Complete Solution & Project Directory Structure
+
+```
+SnoozeIt/
+├── SnoozeIt.sln
+├── Directory.Build.props                     # Common compiler flags (Nullable, LangVersion 13, NativeAOT)
+├── src/
+│   ├── SnoozeIt.Core/                        # Shared domain logic, Win32 bindings, Scoring Models
+│   │   ├── Native/
+│   │   │   ├── NativeMethods.cs              # CsWin32 / Manual P-Invoke declarations
+│   │   │   ├── WinEventHook.cs               # Event listener for window focus changes
+│   │   │   └── AudioDetector.cs              # WASAPI audio session inspector
+│   │   ├── Engine/
+│   │   │   ├── ProcessController.cs          # Suspend/Resume/Evict core execution
+│   │   │   ├── HeuristicEngine.cs            # Score calculation algorithm
+│   │   │   └── SafetyFilter.cs               # Whitelist & PPL checks
+│   │   └── Models/
+│   │       ├── ProcessInfoModel.cs           # Memory, CPU, Snooze status data classes
+│   │       └── SnoozeRecommendation.cs       # Recommendation tiers & breakdown
+│   │
+│   ├── SnoozeIt.Service/                     # Windows Service (SYSTEM daemon)
+│   │   ├── Worker.cs                         # BackgroundService loop
+│   │   ├── Ipc/
+│   │   │   ├── PipeServer.cs                 # Named pipe listener
+│   │   │   └── RequestDispatcher.cs          # Command validation & execution
+│   │   └── Program.cs                        # Host builder & WindowsService integration
+│   │
+│   ├── SnoozeIt.Client/                      # WPF / Wpf.Ui Modern Application
+│   │   ├── App.xaml / App.xaml.cs
+│   │   ├── Views/
+│   │   │   ├── MainWindow.xaml               # Mica-backed Fluent dashboard
+│   │   │   └── TrayIconView.xaml             # H.NotifyIcon system tray setup
+│   │   ├── ViewModels/
+│   │   │   ├── MainViewModel.cs              # Live process list, filter, sorting
+│   │   │   └── ProcessRowViewModel.cs        # Individual process card & score
+│   │   ├── Services/
+│   │   │   ├── IpcClient.cs                  # Client-side named pipe client
+│   │   │   └── WindowFocusWatcher.cs         # Auto-thaw trigger upon clicking app
+│   │   └── Program.cs
+│   │
+│   └── SnoozeIt.Installer/                   # WiX Toolset v4 installer (Installs Service & App)
+└── tests/
+    ├── SnoozeIt.Core.Tests/
+    └── SnoozeIt.Engine.IntegrationTests/
+```
+
+---
+
+## 7. UI/UX Specification (Fluent 2 Design)
+
+* **Design Standard:** Windows 11 Fluent 2 with **Mica Alt** backdrop material, hardware-accelerated animations, and Dark/Light auto-theming.
+* **Header Statistics Banner:**
+  * **Saved RAM:** Real-time counter of total freed RAM (e.g., `3.42 GB Reclaimed`).
+  * **CPU Saved:** Background CPU time spared.
+  * **Snoozed Apps Count:** Active count of paused binaries.
+* **Process List View:**
+  * Displays: Process Icon, Friendly Name, PID, Current RAM, Potential Savings, and **Snoozeability Gauge** (Circular color-coded meter: 0-100).
+  * Quick Actions: [Snooze Now], [Whitelist Forever], [Auto-Snooze Toggle].
+* **System Tray & Instant Thaw:**
+  * Minimize to system tray on close.
+  * Clicking any snoozed window on the Windows Taskbar automatically fires `EVENT_SYSTEM_FOREGROUND`, sending an instant `Process.Resume` command. The user experiences zero friction—the app unfreezes seamlessly without opening SnoozeIt.
+
+---
+
+## 8. Phase-by-Phase Autonomous Implementation Plan
+
+This breakdown is structured for an AI agent working in sequence:
+
+### Phase 1: Core Native Bindings & Process Engine (`SnoozeIt.Core`)
+1. Create `.sln` and `.csproj` targeting `net9.0-windows10.0.19041.0`.
+2. Implement `NativeMethods.cs` using `[LibraryImport]` for `NtSuspendProcess`, `NtResumeProcess`, `EmptyWorkingSet`, and `SetProcessWorkingSetSizeEx`.
+3. Implement `SafetyFilter.cs` with the complete hardcoded whitelist and basic checks (refuse PID $\le 4$).
+4. Implement `ProcessController.cs` providing:
+   * `Result<long> SuspendAndTrim(int processId)`
+   * `Result Resume(int processId)`
+5. Write unit tests launching a sacrificial process (`notepad.exe`), asserting thread suspension state and working set reduction of $> 80\%$.
+
+### Phase 2: Telemetry & Smart Heuristic Engine
+1. Implement `AudioDetector.cs` wrapping Windows Core Audio `IAudioSessionEnumerator` via COM interop to detect processes with active audio streams.
+2. Implement memory and CPU sampling via `System.Diagnostics.Process` and performance counters.
+3. Implement `HeuristicEngine.cs` with the scoring equation specified in Section 4.1.
+4. Add diagnostic tests asserting that active media players receive a score $< 20$ while idle browsers score $> 70$.
+
+### Phase 3: Named Pipe Service & IPC Layer (`SnoozeIt.Service`)
+1. Scaffold `SnoozeIt.Service` using `Microsoft.Extensions.Hosting.WindowsServices`.
+2. Implement `PipeServer.cs` with asynchronous NamedPipe listening (`NamedPipeServerStream`) and customized `PipeSecurity` (World Read/Write, System Full Control).
+3. Implement session validation: extract the calling client's token session and verify matches the target PID's session ID (allowing admin override).
+4. Implement fallback handling: if the service is stopped or uninstalled, allow the client to fall back to in-process execution for same-user processes.
+
+### Phase 4: Modern Desktop Client & Focus Automation (`SnoozeIt.Client`)
+1. Scaffold modern desktop application using WPF with `Wpf.Ui` (or WinUI 3) and `CommunityToolkit.Mvvm`.
+2. Connect `WindowFocusWatcher.cs` to `SetWinEventHook` monitoring `EVENT_SYSTEM_FOREGROUND`. When a snoozed process gains focus, automatically thaw it immediately.
+3. Build the primary dashboard with search/filtering, real-time memory metrics, and one-click "Snooze All Recommended" button.
+4. Add tray icon integration with right-click menu ("Thaw All", "Settings", "Exit").
+
+### Phase 5: Packaging, Packaging Scripts & Demo Setup
+1. Create a PowerShell build script (`build.ps1`) that:
+   * Compiles the solution in Release mode.
+   * Publishes the client and service binaries.
+   * Registers `SnoozeIt.Service` using `sc.exe create SnoozeItService binPath=... start=auto`.
+2. Provide a mock test script that launches three simulated heavy workloads (synthetic Electron apps / memory hog test scripts) to deliver an instant, deterministic 60-second competition live demo.
