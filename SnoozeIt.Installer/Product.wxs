@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*" Name="SnoozeIt" Language="1033" Version="1.0.0.0" Manufacturer="YourCompany" UpgradeCode="{11111111-1111-1111-1111-111111111111}">
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" />
+    <Media Id="1" Cabinet="cab1.cab" EmbedCab="yes" />
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFilesFolder">
+        <Directory Id="INSTALLFOLDER" Name="SnoozeIt" >
+          <Component Id="ClientExe" Guid="{22222222-2222-2222-2222-222222222222}">
+            <File Id="ClientExeFile" Source="..\..\SnoozeIt.Client\bin\Release\net10.0-windows10.0.19041.0\win10-x64\SnoozeIt.Client.exe" />
+          </Component>
+          <Component Id="ServiceExe" Guid="{33333333-3333-3333-3333-333333333333}">
+            <File Id="ServiceExeFile" Source="..\..\SnoozeIt.Service\bin\Release\net10.0-windows10.0.19041.0\win10-x64\SnoozeIt.Service.exe" />
+            <ServiceInstall Id="SnoozeItServiceInstall" Type="ownProcess" Name="SnoozeIt.Service" DisplayName="SnoozeIt Service" Start="auto" ErrorControl="normal" />
+            <ServiceControl Id="SnoozeItServiceControl" Name="SnoozeIt.Service" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
+          </Component>
+        </Directory>
+      </Directory>
+    </Directory>
+    <Feature Id="DefaultFeature" Level="1">
+      <ComponentRef Id="ClientExe" />
+      <ComponentRef Id="ServiceExe" />
+    </Feature>
+  </Product>
+</Wix>
+

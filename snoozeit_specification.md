@@ -326,3 +326,53 @@ This breakdown is structured for an AI agent working in sequence:
    * Publishes the client and service binaries.
    * Registers `SnoozeIt.Service` using `sc.exe create SnoozeItService binPath=... start=auto`.
 2. Provide a mock test script that launches three simulated heavy workloads (synthetic Electron apps / memory hog test scripts) to deliver an instant, deterministic 60-second competition live demo.
+
+## 9. Development Environment Setup
+
+| Component | Version / Requirement | Installation Guidance |
+|-----------|-----------------------|-----------------------|
+| Windows OS | Windows 11 (any build) | Ensure latest cumulative updates installed |
+| .NET SDK | .NET 9 (C# 13) | Install via https://dotnet.microsoft.com/download/dotnet/9.0 (includes Windows targeting packs) |
+| Visual Studio | VS 2022 17.9+ (or later) with **Desktop development with C#** workload | Use the Visual Studio Installer ➜ Modify ➜ Workloads ➜ "Desktop development with C#". This pulls in the Windows 11 SDK and MSBuild support |
+| Windows 11 SDK | 10.0.22621.0 (or newer) | Comes with the VS workload; can also be installed separately from the Windows SDK archive |
+| WiX Toolset | v4.x (latest) | Download from https://wixtoolset.org/releases/. Add the WiX extension to VS for project templates |
+| NuGet Packages | `Wpf.Ui`, `CommunityToolkit.Mvvm`, `Microsoft.Windows.CsWin32`, `System.Drawing.Common`, `Newtonsoft.Json` (or `System.Text.Json`) | `dotnet add package <pkg>` or via VS NuGet Manager |
+| Optional Tools | PowerShell 7+, Git for source control, GitHub CLI (optional) | Install via winget or Chocolatey |
+
+> **Tip**: After installing the .NET SDK, restart any open terminals or IDEs to ensure the `dotnet` command is on the PATH.
+
+## 10. Execution Plan & Timeline
+
+The implementation is broken into incremental phases that can be developed, unit‑tested, and integrated independently. Below is a high‑level Gantt‑style timeline (working days, assuming a single developer at ~6 h/day).
+
+| Phase | Duration | Core Deliverables | Verification |
+|-------|----------|-------------------|--------------|
+| **Phase 1** – Core Native Bindings & Engine | 4 days | • Solution & project files<br>• `NativeMethods.cs` with `[LibraryImport]` wrappers<br>• `SafetyFilter.cs` (blacklist & PID guard)<br>• `ProcessController.cs` (Suspend/Resume/Evict) | Unit tests using a sacrificial process (`notepad.exe`) confirm suspension state and ≥80 % working‑set reduction |
+| **Phase 2** – Telemetry & Heuristic Engine | 5 days | • `AudioDetector.cs` (COM interop for WASAPI)<br>• Memory/CPU sampling logic<br>• `HeuristicEngine.cs` implementing the scoring formula<br>• Data models (`ProcessInfoModel`, `SnoozeRecommendation`) | Integration tests simulate active audio, heavy I/O, and idle workloads; assert score categories match expectations |
+| **Phase 3** – Service & IPC Layer | 4 days | • `SnoozeIt.Service` project scaffolding (Windows Service host)<br>• Named pipe server (`PipeServer.cs`) with security descriptor<br>• `RequestDispatcher.cs` handling JSON‑RPC suspend/resume calls | End‑to‑end test: client sends suspend request → service invokes `ProcessController`; client receives telemetry JSON |
+| **Phase 4** – Desktop Client UI | 6 days | • WPF project using `Wpf.Ui` and `CommunityToolkit.Mvvm`
+• Dashboard XAML (process list, RAM counters, snoozeability gauge)
+• Tray icon integration (`H.NotifyIcon`)
+• `WindowFocusWatcher.cs` (WinEvent hook for auto‑thaw) | Manual UI testing: selecting a process, clicking *Snooze Now* pauses it; focusing the window resumes it instantly |
+| **Phase 5** – Packaging & Demo Scripts | 3 days | • PowerShell `build.ps1` (restore, build, publish, service registration)<br>• WiX installer project (`SnoozeIt.Installer`) creating MSI that registers the service and shortcuts
+• Demo script launching synthetic workloads & auto‑run of the UI | Install on a clean Windows 11 VM, verify service starts, client displays processes, demo script shows RAM reclaimed stats |
+
+### Continuous Integration (Optional)
+- Add a GitHub Actions workflow that runs the unit tests on Windows‑2022 runners on every push.
+- Use `dotnet test --configuration Release` and archive test results as an artifact.
+
+### Risk & Mitigation
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Incorrect privilege handling causing `STATUS_ACCESS_DENIED` | Service cannot suspend processes from other sessions | Early prototype runs under `LocalSystem` with explicit `SeDebugPrivilege` enable; include fallback validation in client |
+| Audio detector COM interop bugs | False‑positive/negative scores | Wrap COM calls in try/catch and fall back to `0` penalty if unavailable |
+| Installer signing & UAC prompts | Installation friction for end‑users | Use a code‑signing certificate for the MSI; document the need for admin rights |
+
+---
+
+**Next Steps (immediate)**:
+1. Verify that the development machine has the required SDKs (run `dotnet --list-sdks`).
+2. Create the solution skeleton (`dotnet new sln -n SnoozeIt`).
+3. Scaffold the `SnoozeIt.Core` project (`dotnet new classlib -f net9.0-windows10.0.19041.0`).
+
+I will now create the solution and the first project files.

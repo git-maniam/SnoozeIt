@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "SnoozeIt.Client (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "SnoozeIt.Client (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
