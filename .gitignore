@@ -12,6 +12,9 @@
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
+publish/
+*.msi
+*.wixobj
 x64/
 x86/
 [Ww][Ii][Nn]32/
