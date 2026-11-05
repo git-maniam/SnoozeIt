@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 /// Low-level Win32/NT kernel P/Invoke declarations for process suspension,
 /// memory eviction, and window focus tracking.
 /// </summary>
-internal static partial class NativeMethods
+public static partial class NativeMethods
 {
     // ── Kernel Suspension & Thawing (ntdll.dll) ──────────────────────────────
 

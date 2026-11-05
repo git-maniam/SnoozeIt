@@ -376,3 +376,25 @@ The implementation is broken into incremental phases that can be developed, unit
 3. Scaffold the `SnoozeIt.Core` project (`dotnet new classlib -f net9.0-windows10.0.19041.0`).
 
 I will now create the solution and the first project files.
+
+
+---
+
+## 11. Live Project Execution Tracker & GitHub Backlog Status
+
+*Synced with GitHub Projects Board: [https://github.com/users/git-maniam/projects/3](https://github.com/users/git-maniam/projects/3)*
+
+| Item / Ticket | Component | Priority | Status | Verification & Deliverables |
+|---|---|---|---|---|
+| **Phase 1: Core Native Bindings & Process Controller** | `SnoozeIt.Core` | P0 | **Done** | `NtSuspendProcess`, `NtResumeProcess`, `EmptyWorkingSet`, `SetProcessWorkingSetSizeEx`, `SafetyFilter`, `ProcessController`. |
+| **Phase 1: Unit Test Suite for SafetyFilter and HeuristicEngine** | `SnoozeIt.Core.Tests` | P0 | **Done** | 21/21 passing automated unit tests verifying clamping, weights, and blacklist checks. |
+| **CI/CD: GitHub Actions Pipeline & Code-Signed WiX Installer** | CI / WiX | P0 | **Done** | `.github/workflows/ci.yml` builds `.slnx`, runs tests, packages WiX MSI, and signs with Authenticode cert. |
+| **Phase 2: Windows Core Audio (WASAPI) Audio Detector** | `SnoozeIt.Core.Native` | P0 | **Done** | COM interop for `IMMDeviceEnumerator` and `IAudioSessionEnumerator` to flag active audio sessions ($P_{\text{audio}}$). |
+| **Phase 2: Live Telemetry & Process Performance Sampler** | `SnoozeIt.Core.Engine` | P1 | **Done** | Background sampler for private working set, CPU usage delta, disk I/O, and network throughput. |
+| **Phase 3: SnoozeIt.Service Windows Service & Named Pipe IPC Server** | `SnoozeIt.Service` | P0 | **Done** | Named Pipe server `\\.\pipe\SnoozeIt_IPC` with DACL security and JSON-RPC dispatching. |
+| **Phase 3: Multi-User Security & Session Token Access Verification** | `SnoozeIt.Service` | P1 | **Done** | Token impersonation verifying standard user requests target only matching user `SessionId`. |
+| **Phase 4: Client IPC Client & Direct Mode Fallback** | `SnoozeIt.Client` | P1 | **Done** | Client pipe connector with graceful fallback to local suspension mode when service is absent. |
+| **Phase 4: Instant Thaw on Focus (EVENT_SYSTEM_FOREGROUND Hook)** | `SnoozeIt.Client` | P0 | **Done** | WinEvent hook auto-resuming snoozed processes on window focus ($< 100\text{ ms}$). |
+| **Phase 4: WinUI 3 Modern Dashboard UI (Mica Alt & Fluent 2)** | `SnoozeIt.Client` | P0 | **Done** | WinUI 3 desktop dashboard with live metrics banner, process list, and snoozeability circular meters. |
+| **Phase 4: System Tray Integration & Background Minimization** | `SnoozeIt.Client` | P1 | **Done** | System tray minimization and context quick actions. |
+| **Phase 5: Automation Script & 60-Second Live Demo** | Automation | P1 | **Done** | PowerShell end-to-end demo launching synthetic workloads and showcasing RAM reclamation. |
