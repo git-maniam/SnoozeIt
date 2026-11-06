@@ -57,8 +57,18 @@
                         <TextBlock x:Name="ServiceStatusTextBlock" Text="Active Service Mode" Style="{ThemeResource SubtitleTextBlockStyle}" FontWeight="Normal" />
                     </StackPanel>
 
-                    <Button x:Name="SnoozeAllBtn" Grid.Column="5" Content="⚡ Snooze All Safe"
-                            Style="{ThemeResource AccentButtonStyle}" VerticalAlignment="Center" Click="OnSnoozeAllClicked" />
+                    <StackPanel Grid.Column="5" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="4">
+                        <HyperlinkButton x:Name="AboutLinkBtn" Content="About-SnoozeIt"
+                                         HorizontalAlignment="Right"
+                                         Padding="0" Margin="0,0,0,2"
+                                         FontSize="12"
+                                         Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                         Click="OnAboutLinkClicked" />
+                        <Button x:Name="SnoozeAllBtn" Content="⚡ Snooze All Safe"
+                                Style="{ThemeResource AccentButtonStyle}"
+                                HorizontalAlignment="Right"
+                                Click="OnSnoozeAllClicked" />
+                    </StackPanel>
                 </Grid>
             </StackPanel>
         </Border>
@@ -195,5 +205,93 @@
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
+
+        <!-- About SnoozeIt Splash Screen / Modal Overlay -->
+        <Grid x:Name="AboutOverlay" Grid.RowSpan="4" Margin="-24" Background="#99000000"
+              Visibility="Collapsed" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+              Canvas.ZIndex="1000" PointerPressed="OnAboutOverlayPointerPressed">
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="28"
+                    MaxWidth="680"
+                    MaxHeight="620"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Grid RowSpacing="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Modal Header: Title & Close 'X' Button -->
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                            <Image Source="Assets/Square44x44Logo.targetsize-48_altform-lightunplated.png" Width="32" Height="32" />
+                            <TextBlock Text="About SnoozeIt" Style="{ThemeResource TitleTextBlockStyle}" FontWeight="Bold" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button x:Name="AboutHeaderCloseBtn" Grid.Column="1" Content="✕"
+                                Style="{ThemeResource SubtleButtonStyle}"
+                                FontSize="14" FontWeight="Bold"
+                                Width="36" Height="36" Padding="0"
+                                HorizontalAlignment="Right" VerticalAlignment="Center"
+                                Click="OnAboutCloseClicked" />
+                    </Grid>
+
+                    <!-- Modal Content: ScrollViewer with About-SnoozeIt.md content -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="14" Padding="0,4,12,4">
+                            <TextBlock Text="SnoozeIt is provided free of charge for personal and commercial use, without warranties or guarantees of any kind."
+                                       TextWrapping="Wrap" Style="{ThemeResource BodyTextBlockStyle}" />
+
+                            <TextBlock Text="As a developer, I created this tool to help fellow developers. I experienced high RAM usage during builds, while RAM prices have increased significantly due to the AI boom. Not every developer can afford to upgrade their machine regularly."
+                                       TextWrapping="Wrap" Style="{ThemeResource BodyTextBlockStyle}" />
+
+                            <TextBlock Text="SnoozeIt helps address this problem by intelligently pausing services such as Docker Desktop during build phases or other services during unit-test runs, helping conserve RAM and system resources."
+                                       TextWrapping="Wrap" Style="{ThemeResource BodyTextBlockStyle}" />
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="You can find the source code at:"
+                                           TextWrapping="Wrap" Style="{ThemeResource BodyTextBlockStyle}" />
+                                <HyperlinkButton Content="https://github.com/git-maniam/SnoozeIt"
+                                                 NavigateUri="https://github.com/git-maniam/SnoozeIt"
+                                                 Click="OnGitHubLinkClicked"
+                                                 Padding="0" FontWeight="SemiBold"
+                                                 Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                <TextBlock Text="Feel free to use it, fork it, modify it, or do whatever you like with it—but please continue sharing it freely with others."
+                                           TextWrapping="Wrap" Style="{ThemeResource BodyTextBlockStyle}" />
+                            </StackPanel>
+
+                            <TextBlock Text="Developers are already facing increasing competition from AI. By making small, useful tools like this freely available, we can support and strengthen our developer community."
+                                       TextWrapping="Wrap" Style="{ThemeResource BodyTextBlockStyle}" />
+
+                            <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,6" />
+
+                            <TextBlock Text="About Me" Style="{ThemeResource SubtitleTextBlockStyle}" FontWeight="Bold" />
+
+                            <TextBlock Text="I am a developer at heart and a Principal Technical Program Manager by profession, based in Bangalore, India."
+                                       TextWrapping="Wrap" Style="{ThemeResource BodyTextBlockStyle}" />
+
+                            <TextBlock Text="I will never ask for money or donations for tools like this. If you would like to do something meaningful, consider donating to a charity of your choice—for example, one that helps children learn new skills or supports elderly people in need. The choice is entirely yours."
+                                       TextWrapping="Wrap" Style="{ThemeResource BodyTextBlockStyle}" />
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Modal Footer: Close Button -->
+                    <Grid Grid.Row="2">
+                        <Button x:Name="AboutFooterCloseBtn" Content="Close"
+                                Style="{ThemeResource AccentButtonStyle}"
+                                HorizontalAlignment="Right" MinWidth="100"
+                                Click="OnAboutCloseClicked" />
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </Page>

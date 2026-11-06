@@ -127,4 +127,43 @@ public sealed partial class MainPage : Page
     {
         await ViewModel.SnoozeAllRecommendedAsync();
     }
+
+    private void OnAboutLinkClicked(object sender, RoutedEventArgs e)
+    {
+        AboutOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void OnAboutCloseClicked(object sender, RoutedEventArgs e)
+    {
+        AboutOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private void OnAboutOverlayPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (ReferenceEquals(e.OriginalSource, AboutOverlay))
+        {
+            AboutOverlay.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private async void OnGitHubLinkClicked(object sender, RoutedEventArgs e)
+    {
+        var uri = new Uri("https://github.com/git-maniam/SnoozeIt");
+        try
+        {
+            await Windows.System.Launcher.LaunchUriAsync(uri);
+        }
+        catch
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = uri.ToString(),
+                    UseShellExecute = true
+                });
+            }
+            catch { }
+        }
+    }
 }
