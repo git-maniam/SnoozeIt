@@ -19,32 +19,48 @@
         <!-- Header Metrics Banner -->
         <Border Grid.Row="0" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                 CornerRadius="8" Padding="20" BorderThickness="1" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
-            <Grid ColumnSpacing="24">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+            <StackPanel Spacing="16">
+                <TextBlock Text="RAM Usage" Style="{ThemeResource SubtitleTextBlockStyle}" FontWeight="Bold" />
 
-                <StackPanel Grid.Column="0">
-                    <TextBlock Text="RAM Reclaimed" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    <TextBlock x:Name="SavedRamTextBlock" Text="0.0 MB Reclaimed" Style="{ThemeResource TitleTextBlockStyle}" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                </StackPanel>
+                <Grid ColumnSpacing="20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="1">
-                    <TextBlock Text="Snoozed Workloads" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    <TextBlock x:Name="SnoozedCountTextBlock" Text="0 Apps" Style="{ThemeResource TitleTextBlockStyle}" FontWeight="SemiBold" />
-                </StackPanel>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Total RAM" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock x:Name="TotalRamTextBlock" Text="0.0 GB" Style="{ThemeResource TitleTextBlockStyle}" FontWeight="SemiBold" />
+                    </StackPanel>
 
-                <StackPanel Grid.Column="2">
-                    <TextBlock Text="Execution Engine" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    <TextBlock x:Name="ServiceStatusTextBlock" Text="Active Service Mode" Style="{ThemeResource SubtitleTextBlockStyle}" FontWeight="Normal" />
-                </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="Used RAM" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock x:Name="UsedRamTextBlock" Text="0.0 GB" Style="{ThemeResource TitleTextBlockStyle}" FontWeight="SemiBold" />
+                    </StackPanel>
 
-                <Button x:Name="SnoozeAllBtn" Grid.Column="3" Content="⚡ Snooze All Safe"
-                        Style="{ThemeResource AccentButtonStyle}" VerticalAlignment="Center" Click="OnSnoozeAllClicked" />
-            </Grid>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Reclaimed RAM" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock x:Name="ReclaimedRamTextBlock" Text="0.0 MB" Style="{ThemeResource TitleTextBlockStyle}" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="3">
+                        <TextBlock Text="Snoozed Workloads" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock x:Name="SnoozedCountTextBlock" Text="0 Apps" Style="{ThemeResource TitleTextBlockStyle}" FontWeight="SemiBold" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="4">
+                        <TextBlock Text="Execution Engine" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock x:Name="ServiceStatusTextBlock" Text="Active Service Mode" Style="{ThemeResource SubtitleTextBlockStyle}" FontWeight="Normal" />
+                    </StackPanel>
+
+                    <Button x:Name="SnoozeAllBtn" Grid.Column="5" Content="⚡ Snooze All Safe"
+                            Style="{ThemeResource AccentButtonStyle}" VerticalAlignment="Center" Click="OnSnoozeAllClicked" />
+                </Grid>
+            </StackPanel>
         </Border>
 
         <!-- Feedback InfoBar / Status Banner -->

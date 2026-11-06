@@ -1,12 +1,15 @@
 namespace SnoozeIt.Client.ViewModels;
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.UI.Dispatching;
 using SnoozeIt.Client.Services;
 using SnoozeIt.Core.Engine;
 using SnoozeIt.Core.Models;
@@ -19,10 +22,22 @@ public partial class MainViewModel : ObservableObject
     public WindowFocusWatcher FocusWatcher { get; }
 
     [ObservableProperty]
+    private string _totalRamText = "0.0 GB";
+
+    [ObservableProperty]
+    private string _usedRamText = "0.0 GB";
+
+    [ObservableProperty]
+    private string _reclaimedRamText = "0.0 MB";
+
+    [ObservableProperty]
     private string _savedRamText = "0.0 MB Reclaimed";
 
     [ObservableProperty]
     private int _snoozedCount = 0;
+
+    [ObservableProperty]
+    private string _snoozedCountFormatted = "0 Apps";
 
     [ObservableProperty]
     private string _searchFilter = "";
@@ -33,21 +48,106 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _feedbackMessage = "";
 
-    private long _totalReclaimedBytes = 0;
+    private readonly ConcurrentDictionary<int, long> _reclaimedBytesByPid = new();
+    private readonly DispatcherQueue? _dispatcherQueue;
+    private readonly DispatcherQueueTimer? _dispatcherTimer;
+    private readonly System.Threading.Timer? _fallbackTimer;
 
     public ObservableCollection<ProcessGroupViewModel> Groups { get; } = new();
 
     public MainViewModel()
     {
+        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+
         FocusWatcher = new WindowFocusWatcher(_serviceClient);
         FocusWatcher.ProcessAutoThawed += OnProcessAutoThawed;
         FocusWatcher.Start();
 
+        UpdateSystemRamMetrics();
+        UpdateReclaimedRamDisplay();
+
+        if (_dispatcherQueue != null)
+        {
+            _dispatcherTimer = _dispatcherQueue.CreateTimer();
+            _dispatcherTimer.Interval = TimeSpan.FromSeconds(30);
+            _dispatcherTimer.Tick += (s, e) => OnAutoRefreshTimerTick();
+            _dispatcherTimer.Start();
+        }
+        else
+        {
+            _fallbackTimer = new System.Threading.Timer(_ => OnAutoRefreshTimerTick(), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+        }
+
         _ = RefreshDataAsync();
+    }
+
+    private void OnAutoRefreshTimerTick()
+    {
+        if (_dispatcherQueue != null && !_dispatcherQueue.HasThreadAccess)
+        {
+            _dispatcherQueue.TryEnqueue(() =>
+            {
+                UpdateSystemRamMetrics();
+                _ = RefreshDataAsync();
+            });
+        }
+        else
+        {
+            UpdateSystemRamMetrics();
+            _ = RefreshDataAsync();
+        }
+    }
+
+    public void UpdateSystemRamMetrics()
+    {
+        try
+        {
+            var memStatus = new NativeMethods.MEMORYSTATUSEX
+            {
+                dwLength = (uint)Marshal.SizeOf<NativeMethods.MEMORYSTATUSEX>()
+            };
+
+            if (NativeMethods.GlobalMemoryStatusEx(ref memStatus))
+            {
+                ulong totalPhys = memStatus.ullTotalPhys;
+                ulong availPhys = memStatus.ullAvailPhys;
+                ulong usedPhys = totalPhys > availPhys ? totalPhys - availPhys : 0;
+
+                TotalRamText = $"{(totalPhys / (1024.0 * 1024.0 * 1024.0)):F1} GB";
+                UsedRamText = $"{(usedPhys / (1024.0 * 1024.0 * 1024.0)):F1} GB";
+            }
+        }
+        catch
+        {
+            TotalRamText = "0.0 GB";
+            UsedRamText = "0.0 GB";
+        }
+    }
+
+    public static string FormatBytes(long bytes)
+    {
+        if (bytes >= 1024L * 1024 * 1024)
+        {
+            return $"{(bytes / (1024.0 * 1024.0 * 1024.0)):F2} GB";
+        }
+        return $"{(bytes / (1024.0 * 1024.0)):F1} MB";
+    }
+
+    private void UpdateReclaimedRamDisplay()
+    {
+        long totalReclaimed = _reclaimedBytesByPid.Values.Sum();
+        string formatted = FormatBytes(totalReclaimed);
+        ReclaimedRamText = formatted;
+        SavedRamText = $"{formatted} Reclaimed";
+        SnoozedCount = _reclaimedBytesByPid.Count;
+        SnoozedCountFormatted = $"{SnoozedCount} Apps";
     }
 
     private void OnProcessAutoThawed(int pid)
     {
+        _reclaimedBytesByPid.TryRemove(pid, out _);
+        UpdateReclaimedRamDisplay();
+
         ProcessItemViewModel? foundItem = null;
         foreach (var group in Groups)
         {
@@ -63,7 +163,6 @@ public partial class MainViewModel : ObservableObject
         {
             foundItem.State = SnoozeState.Active;
             MoveItemFromSnoozedGroup(foundItem);
-            SnoozedCount = Math.Max(0, SnoozedCount - 1);
             FeedbackMessage = $"Auto-thawed {foundItem.FriendlyName} (PID {pid}) on window focus.";
         }
     }
@@ -73,6 +172,18 @@ public partial class MainViewModel : ObservableObject
     {
         IsServiceConnected = await _serviceClient.IsServiceAvailableAsync();
         var samples = _sampler.SampleAllProcesses();
+
+        // Reconcile active vs snoozed processes: if any snoozed process exited or terminated, remove from tracking
+        var runningPids = new HashSet<int>(samples.Select(s => s.Process.ProcessId));
+        foreach (var snoozedPid in _reclaimedBytesByPid.Keys.ToList())
+        {
+            if (!runningPids.Contains(snoozedPid))
+            {
+                _reclaimedBytesByPid.TryRemove(snoozedPid, out _);
+                FocusWatcher.UnregisterSnoozedProcess(snoozedPid);
+            }
+        }
+        UpdateReclaimedRamDisplay();
 
         var filtered = string.IsNullOrWhiteSpace(SearchFilter)
             ? samples
@@ -90,6 +201,9 @@ public partial class MainViewModel : ObservableObject
             var rec = sample.Recommendation;
             bool isSafe = SafetyFilter.IsSafeToSuspend(proc.ProcessId, proc.ProcessName, out _);
 
+            bool isSnoozed = _reclaimedBytesByPid.ContainsKey(proc.ProcessId) || proc.State == SnoozeState.Snoozed;
+            var effectiveState = isSnoozed ? SnoozeState.Snoozed : proc.State;
+
             var itemVm = new ProcessItemViewModel
             {
                 ProcessId = proc.ProcessId,
@@ -100,11 +214,11 @@ public partial class MainViewModel : ObservableObject
                 Score = rec.Score,
                 Tier = rec.Tier,
                 IsPlayingAudio = proc.IsPlayingAudio,
-                State = proc.State,
+                State = effectiveState,
                 IsSafeToSnooze = isSafe
             };
 
-            if (proc.State == SnoozeState.Snoozed)
+            if (isSnoozed)
             {
                 snoozedItems.Add(itemVm);
             }
@@ -159,10 +273,9 @@ public partial class MainViewModel : ObservableObject
         {
             item.State = SnoozeState.Snoozed;
             FocusWatcher.RegisterSnoozedProcess(item.ProcessId);
-            _totalReclaimedBytes += result.Value;
-            SavedRamText = $"{(_totalReclaimedBytes / (1024.0 * 1024.0)):F1} MB Reclaimed";
-            SnoozedCount++;
-            FeedbackMessage = $"Successfully snoozed {item.FriendlyName} (PID {item.ProcessId}). Reclaimed {(result.Value / (1024.0 * 1024.0)):F1} MB.";
+            _reclaimedBytesByPid[item.ProcessId] = result.Value;
+            UpdateReclaimedRamDisplay();
+            FeedbackMessage = $"Successfully snoozed {item.FriendlyName} (PID {item.ProcessId}). Reclaimed {FormatBytes(result.Value)}.";
             MoveItemToSnoozedGroup(item);
         }
         else
@@ -183,7 +296,8 @@ public partial class MainViewModel : ObservableObject
         {
             item.State = SnoozeState.Active;
             FocusWatcher.UnregisterSnoozedProcess(item.ProcessId);
-            SnoozedCount = Math.Max(0, SnoozedCount - 1);
+            _reclaimedBytesByPid.TryRemove(item.ProcessId, out _);
+            UpdateReclaimedRamDisplay();
             FeedbackMessage = $"Successfully resumed {item.FriendlyName} (PID {item.ProcessId}).";
             MoveItemFromSnoozedGroup(item);
         }
@@ -208,7 +322,7 @@ public partial class MainViewModel : ObservableObject
             {
                 item.State = SnoozeState.Snoozed;
                 FocusWatcher.RegisterSnoozedProcess(item.ProcessId);
-                _totalReclaimedBytes += result.Value;
+                _reclaimedBytesByPid[item.ProcessId] = result.Value;
                 snoozed++;
                 MoveItemToSnoozedGroup(item);
             }
@@ -216,8 +330,7 @@ public partial class MainViewModel : ObservableObject
 
         if (snoozed > 0)
         {
-            SavedRamText = $"{(_totalReclaimedBytes / (1024.0 * 1024.0)):F1} MB Reclaimed";
-            SnoozedCount += snoozed;
+            UpdateReclaimedRamDisplay();
             FeedbackMessage = $"Snoozed {snoozed} instances of {group.FriendlyName}.";
         }
         group.Recalculate();
@@ -236,6 +349,7 @@ public partial class MainViewModel : ObservableObject
             {
                 item.State = SnoozeState.Active;
                 FocusWatcher.UnregisterSnoozedProcess(item.ProcessId);
+                _reclaimedBytesByPid.TryRemove(item.ProcessId, out _);
                 resumed++;
                 if (group.IsSnoozedGroup)
                 {
@@ -246,7 +360,7 @@ public partial class MainViewModel : ObservableObject
 
         if (resumed > 0)
         {
-            SnoozedCount = Math.Max(0, SnoozedCount - resumed);
+            UpdateReclaimedRamDisplay();
             FeedbackMessage = $"Resumed {resumed} instances of {group.FriendlyName}.";
         }
         group.Recalculate();
@@ -266,7 +380,7 @@ public partial class MainViewModel : ObservableObject
                 {
                     item.State = SnoozeState.Snoozed;
                     FocusWatcher.RegisterSnoozedProcess(item.ProcessId);
-                    _totalReclaimedBytes += result.Value;
+                    _reclaimedBytesByPid[item.ProcessId] = result.Value;
                     count++;
                     MoveItemToSnoozedGroup(item);
                 }
@@ -275,8 +389,7 @@ public partial class MainViewModel : ObservableObject
 
         if (count > 0)
         {
-            SavedRamText = $"{(_totalReclaimedBytes / (1024.0 * 1024.0)):F1} MB Reclaimed";
-            SnoozedCount += count;
+            UpdateReclaimedRamDisplay();
             FeedbackMessage = $"Snoozed {count} safe background workloads.";
         }
         else

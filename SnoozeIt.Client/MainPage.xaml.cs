@@ -14,14 +14,25 @@ public sealed partial class MainPage : Page
         InitializeComponent();
         ProcessGroupListView.ItemsSource = ViewModel.Groups;
 
+        // Populate initial values
+        TotalRamTextBlock.Text = ViewModel.TotalRamText;
+        UsedRamTextBlock.Text = ViewModel.UsedRamText;
+        ReclaimedRamTextBlock.Text = ViewModel.ReclaimedRamText;
+        SnoozedCountTextBlock.Text = ViewModel.SnoozedCountFormatted;
+        ServiceStatusTextBlock.Text = ViewModel.IsServiceConnected ? "Privileged Service Mode" : "Direct User Mode";
+
         ViewModel.PropertyChanged += (s, e) =>
         {
             DispatcherQueue.TryEnqueue(() =>
             {
-                if (e.PropertyName == nameof(ViewModel.SavedRamText))
-                    SavedRamTextBlock.Text = ViewModel.SavedRamText;
-                else if (e.PropertyName == nameof(ViewModel.SnoozedCount))
-                    SnoozedCountTextBlock.Text = $"{ViewModel.SnoozedCount} Apps";
+                if (e.PropertyName == nameof(ViewModel.TotalRamText))
+                    TotalRamTextBlock.Text = ViewModel.TotalRamText;
+                else if (e.PropertyName == nameof(ViewModel.UsedRamText))
+                    UsedRamTextBlock.Text = ViewModel.UsedRamText;
+                else if (e.PropertyName == nameof(ViewModel.ReclaimedRamText))
+                    ReclaimedRamTextBlock.Text = ViewModel.ReclaimedRamText;
+                else if (e.PropertyName == nameof(ViewModel.SnoozedCountFormatted) || e.PropertyName == nameof(ViewModel.SnoozedCount))
+                    SnoozedCountTextBlock.Text = ViewModel.SnoozedCountFormatted;
                 else if (e.PropertyName == nameof(ViewModel.IsServiceConnected))
                     ServiceStatusTextBlock.Text = ViewModel.IsServiceConnected ? "Privileged Service Mode" : "Direct User Mode";
                 else if (e.PropertyName == nameof(ViewModel.FeedbackMessage) && !string.IsNullOrEmpty(ViewModel.FeedbackMessage))
