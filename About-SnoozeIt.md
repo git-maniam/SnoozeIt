@@ -15,3 +15,4 @@ Developers are already facing increasing competition from AI. By making small, u
 I am a developer at heart and a Principal Technical Program Manager by profession, based in Bangalore, India.
 
 I will never ask for money or donations for tools like this. If you would like to do something meaningful, consider donating to a charity of your choice—for example, one that helps children learn new skills or supports elderly people in need. The choice is entirely yours.
+
