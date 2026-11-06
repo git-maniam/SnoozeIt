@@ -21,13 +21,18 @@ Write-Host ""
 
 # 1. Resolve MSI Path
 if (-not (Test-Path $MsiPath)) {
-    # Check alternate location if run from subfolder
-    $altPath = Join-Path $PSScriptRoot "..\installer\SnoozeItInstaller.msi"
-    if (Test-Path $altPath) {
-        $MsiPath = (Resolve-Path $altPath).Path
+    # Check alternate subdirectories (e.g. installer\SnoozeIt-Installer\SnoozeItInstaller.msi)
+    $candidate = Get-ChildItem -Path "$PSScriptRoot\installer" -Filter "SnoozeItInstaller.msi" -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($candidate) {
+        $MsiPath = $candidate.FullName
     } else {
-        Write-Error "MSI installer not found at '$MsiPath'. Please build or download it first."
-        exit 1
+        $altPath = Join-Path $PSScriptRoot "..\installer\SnoozeItInstaller.msi"
+        if (Test-Path $altPath) {
+            $MsiPath = (Resolve-Path $altPath).Path
+        } else {
+            Write-Error "MSI installer not found at '$MsiPath'. Please build or download it first."
+            exit 1
+        }
     }
 }
 $MsiPath = (Resolve-Path $MsiPath).Path
